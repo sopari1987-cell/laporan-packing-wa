@@ -34,7 +34,7 @@
 
     <div class="card bg-white p-6 sm:p-8 rounded-xl w-full max-w-lg border border-gray-200">
       <h1 class="text-2xl font-bold text-gray-800 mb-2">Kirim Laporan Packing WA</h1>
-      <p class="text-sm text-gray-500 mb-6">Tekan tombol di bawah untuk menjalankan skrip: ini akan mengambil data dari dan mengirimkan laporan melalui WhatsApp.</p>
+      <p class="text-sm text-gray-500 mb-6">Tekan tombol di bawah untuk menjalankan skrip: mengambil data dari Sheet 'SUMMARY' dan mengirimkan laporan melalui WhatsApp.</p>
       
       <!-- Tombol Aksi -->
       <button 
