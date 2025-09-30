@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <title>Aplikasi Kirim Laporan Packing</title>
+    <!-- Memuat Tailwind CSS untuk tampilan responsif dan modern -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      /* Gaya kustom dasar */
+      body {
+        font-family: 'Inter', sans-serif;
+        background-color: #f7f9fc;
+      }
+      .card {
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+      }
+      .loading-spinner {
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid #3498db;
+        border-radius: 50%;
+        width: 24px;
+        height: 24px;
+        animation: spin 1s linear infinite;
+        margin-right: 8px;
+        display: none; /* Sembunyikan secara default */
+      }
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+    </style>
+  </head>
+  <body class="p-4 sm:p-8 flex items-center justify-center min-h-screen">
+
+    <div class="card bg-white p-6 sm:p-8 rounded-xl w-full max-w-lg border border-gray-200">
+      <h1 class="text-2xl font-bold text-gray-800 mb-2">Kirim Laporan Packing WA</h1>
+      <p class="text-sm text-gray-500 mb-6">Tekan tombol di bawah untuk menjalankan skrip: ini akan mengambil data dari dan mengirimkan laporan melalui WhatsApp.</p>
+      
+      <!-- Tombol Aksi -->
+      <button 
+        id="sendButton"
+        onclick="triggerSendPackingSummary()"
+        class="w-full flex items-center justify-center bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-4 rounded-lg transition duration-150 ease-in-out disabled:opacity-50 focus:outline-none focus:ring-4 focus:ring-green-500 focus:ring-opacity-50"
+      >
+        <span id="buttonText">Cek Status & Kirim WA Sekarang</span>
+        <div id="loadingSpinner" class="loading-spinner"></div>
+      </button>
+
+      <!-- Area Status -->
+      <div id="statusMessage" class="mt-6 p-4 rounded-lg text-sm bg-blue-100 text-blue-800 border border-blue-200 hidden">
+        Menunggu perintah...
+      </div>
+    </div>
+
+    <script>
+      // URL Web App Google Apps Script Anda (URL ini akan menerima request POST dari GitHub)
+      const GAS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbzTEJ7ooU_r6vb4l2CcorCr0xfY3GguwSuYcWSRB1-8qdu4PJL6uWRfeNtsSFXJIC76Hw/exec';
+
+      const sendButton = document.getElementById('sendButton');
+      const buttonText = document.getElementById('buttonText');
+      const loadingSpinner = document.getElementById('loadingSpinner');
+      const statusMessage = document.getElementById('statusMessage');
+
+      /**
+       * Fungsi untuk menampilkan pesan status di UI
+       */
+      function updateStatus(message, type = 'info') {
+        statusMessage.textContent = message;
+        
+        // Atur style berdasarkan tipe pesan
+        statusMessage.classList.remove('hidden', 'bg-red-100', 'text-red-800', 'border-red-200', 'bg-green-100', 'text-green-800', 'border-green-200', 'bg-blue-100', 'text-blue-800', 'border-blue-200');
+        statusMessage.classList.add('flex');
+        
+        if (message.includes('✅') || type === 'success') {
+          statusMessage.classList.add('bg-green-100', 'text-green-800', 'border-green-200');
+        } else if (message.includes('❌') || type === 'error') {
+          statusMessage.classList.add('bg-red-100', 'text-red-800', 'border-red-200');
+        } else {
+          statusMessage.classList.add('bg-blue-100', 'text-blue-800', 'border-blue-200');
+        }
+      }
+
+      /**
+       * Fungsi yang dipanggil saat tombol ditekan.
+       * Menggunakan Fetch API untuk memanggil fungsi doPost di GAS.
+       */
+      async function triggerSendPackingSummary() {
+        
+        // 1. Tampilkan loading dan nonaktifkan tombol
+        sendButton.disabled = true;
+        buttonText.textContent = 'Memproses Data...';
+        loadingSpinner.style.display = 'block';
+        updateStatus('Sedang menghubungi Google Apps Script (GAS)...', 'info');
+
+        try {
+          // 2. Kirim permintaan POST ke URL Web App GAS
+          const response = await fetch(GAS_WEB_APP_URL, {
+            method: 'POST',
+            mode: 'cors', // Penting untuk panggilan lintas domain (GitHub ke Google)
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            // Mengirim body kosong atau dummy karena semua logika data ada di sisi GAS
+            body: JSON.stringify({ action: 'SEND_PACKING_SUMMARY' }) 
+          });
+
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+
+          const result = await response.json(); // GAS mengembalikan JSON {status: '...', message: '...'}
+
+          // 3. Matikan loading dan aktifkan tombol kembali
+          sendButton.disabled = false;
+          buttonText.textContent = 'Cek Status & Kirim WA Sekarang';
+          loadingSpinner.style.display = 'none';
+
+          // 4. Tampilkan pesan status
+          if (result.status === 'success') {
+            updateStatus(result.message, 'success');
+          } else {
+            // Ini menangani error yang dilempar dari dalam fungsi GAS (misalnya Sheet tidak ditemukan)
+            updateStatus(result.message, 'error');
+          }
+
+        } catch (error) {
+          // Tangani kegagalan jaringan, CORS, atau parsing JSON
+          sendButton.disabled = false;
+          buttonText.textContent = 'Cek Status & Kirim WA Sekarang';
+          loadingSpinner.style.display = 'none';
+          
+          updateStatus('❌ Terjadi Kesalahan Koneksi/Jaringan. Cek konsol browser untuk detail. Pastikan CORS dan otorisasi GAS sudah benar.', 'error');
+          console.error("Fetch Execution Failed:", error);
+        }
+      }
+    </script>
+  </body>
+</html>
